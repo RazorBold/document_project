@@ -49,32 +49,59 @@
 <!-- Progress section -->
 <div class="section">
   <div class="charts-row">
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Progress Fisik</span>
-        <span id="progress-display" style="color:var(--accent);font-weight:700;font-family:var(--font-mono)">{{ project.progress }}%</span>
+    <!-- Progress card -->
+    <div class="card" style="display:flex;flex-direction:column;gap:0">
+      <div class="card-header" style="margin-bottom:0">
+        <span class="card-title">Capaian Project</span>
+        <span style="font-size:.75rem;color:var(--text-muted)">Fisik &amp; Keuangan</span>
       </div>
-      <canvas id="progress-chart" height="180"></canvas>
-      <div style="margin-top:16px">
-        <label class="form-label">Geser untuk update progress</label>
-        <input type="range" id="progress-slider" min="0" max="100" value="{{ project.progress }}"
-               style="width:100%;accent-color:var(--accent)">
+      <!-- Donut -->
+      <div style="position:relative;height:200px;margin:12px 0">
+        <canvas id="progress-chart"></canvas>
+      </div>
+      <!-- Dual progress bars -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:5px">
+            <span style="color:var(--text-secondary)">Fisik</span>
+            <span id="progress-display" style="color:var(--accent);font-weight:700;font-family:var(--font-mono)">{{ project.progress }}%</span>
+          </div>
+          <div class="progress-wrap"><div class="progress-bar" id="progress-bar-fisik" style="width:{{ project.progress }}%"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:5px">
+            <span style="color:var(--text-secondary)">Keuangan</span>
+            <span style="color:var(--warning);font-weight:700;font-family:var(--font-mono)">{{ budget_summary.pct }}%</span>
+          </div>
+          <div class="progress-wrap"><div class="progress-bar" style="width:{{ budget_summary.pct }}%;background:linear-gradient(90deg,var(--warning),#fbbf24)"></div></div>
+        </div>
+      </div>
+      <!-- Slider -->
+      <div style="border-top:1px solid var(--border);padding-top:14px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:.8rem">
+          <label style="color:var(--text-muted)">Update progress fisik</label>
+          <span id="slider-val" style="color:var(--accent);font-family:var(--font-mono);font-weight:600">{{ project.progress }}%</span>
+        </div>
+        <input type="range" id="progress-slider" min="0" max="100" value="{{ project.progress }}" style="width:100%">
       </div>
     </div>
+    <!-- Budget card -->
     <div class="card">
       <div class="card-header">
         <span class="card-title">Anggaran per Kategori</span>
-        <div>
-          <span style="font-size:.8rem;color:var(--text-secondary)">
-            Realisasi: <strong style="color:var(--success)">{{ budget_summary.pct }}%</strong>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:.78rem;color:var(--text-secondary)">
+            Terpakai <strong style="color:{% if budget_summary.pct > 90 %}var(--danger){% elif budget_summary.pct > 70 %}var(--warning){% else %}var(--success){% endif %}">{{ budget_summary.pct }}%</strong>
           </span>
         </div>
       </div>
       {% if chart_data.labels %}
-      <div class="chart-container"><canvas id="budget-chart"></canvas></div>
+      <div class="chart-container" style="height:240px"><canvas id="budget-chart"></canvas></div>
       {% else %}
-      <div class="empty-state" style="padding:40px 0">
+      <div class="empty-state" style="padding:60px 0">
+        <div class="empty-state-icon">💰</div>
         <p>Belum ada data anggaran</p>
+        <p style="font-size:.8rem;margin-top:6px">Tambahkan item di tab <strong>Anggaran</strong></p>
       </div>
       {% endif %}
     </div>
@@ -143,13 +170,6 @@
     <span class="section-title">Anggota Tim</span>
     <button class="btn btn-primary btn-sm" id="add-member-btn">＋ Tambah Anggota</button>
   </div>
-  <div id="add-member-form" style="display:none;margin-bottom:16px" class="card">
-    <div style="display:flex;gap:8px">
-      <input type="text" id="new-member-name" class="form-control" placeholder="Nama anggota baru" style="flex:1">
-      <button class="btn btn-primary" id="save-member-btn">Simpan</button>
-      <button class="btn btn-secondary" id="cancel-member-btn">Batal</button>
-    </div>
-  </div>
   <div class="card" style="padding:0">
     <div class="table-wrap">
       <table>
@@ -204,25 +224,6 @@
     </div>
   </div>
 
-  <div id="add-budget-form" style="display:none;margin-bottom:16px" class="card">
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
-      <div class="form-group" style="margin:0"><label class="form-label">Kategori</label>
-        <select class="form-control" id="bi-kategori">
-          <option>SDM</option><option>Operasional</option><option>Peralatan</option><option>Lainnya</option>
-        </select></div>
-      <div class="form-group" style="margin:0"><label class="form-label">Nama Item</label><input class="form-control" id="bi-nama" placeholder="Item pengeluaran"></div>
-      <div class="form-group" style="margin:0"><label class="form-label">Qty</label><input class="form-control" id="bi-qty" type="number" min="0" value="1"></div>
-      <div class="form-group" style="margin:0"><label class="form-label">Satuan</label><input class="form-control" id="bi-satuan" placeholder="pcs/jam/hari"></div>
-      <div class="form-group" style="margin:0"><label class="form-label">Harga Satuan</label><input class="form-control" id="bi-harga" type="number" min="0" value="0"></div>
-      <div class="form-group" style="margin:0"><label class="form-label">Realisasi</label><input class="form-control" id="bi-realisasi" type="number" min="0" value="0"></div>
-    </div>
-    <div class="form-group" style="margin-top:10px"><label class="form-label">Keterangan</label><input class="form-control" id="bi-keterangan" placeholder="Opsional"></div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn btn-primary btn-sm" id="save-budget-btn">Simpan Item</button>
-      <button class="btn btn-secondary btn-sm" id="cancel-budget-btn">Batal</button>
-    </div>
-  </div>
-
   <div class="card" style="padding:0">
     <div class="table-wrap">
       <table>
@@ -256,14 +257,6 @@
     <span class="section-title">Milestone</span>
     <button class="btn btn-primary btn-sm" id="add-milestone-btn">＋ Tambah Milestone</button>
   </div>
-  <div id="add-milestone-form" style="display:none;margin-bottom:16px" class="card">
-    <div style="display:flex;gap:8px;align-items:flex-end">
-      <div style="flex:1"><label class="form-label">Nama Milestone</label><input class="form-control" id="ms-nama" placeholder="Target capaian"></div>
-      <div><label class="form-label">Target Tanggal</label><input class="form-control" id="ms-date" type="date"></div>
-      <button class="btn btn-primary" id="save-milestone-btn">Simpan</button>
-      <button class="btn btn-secondary" id="cancel-milestone-btn">Batal</button>
-    </div>
-  </div>
   <div class="card" style="padding:0">
     <div class="table-wrap">
       <table>
@@ -295,29 +288,67 @@
 <script>
 (function () {
   var pid = window.CURRENT_PROJECT_ID;
+  var TAB_KEY = 'activeTab_' + pid;
+
+  // ── refreshAfter: tampilkan toast lalu reload ke tab yang sama ──
+  function refreshAfter(tab, message, type) {
+    sessionStorage.setItem(TAB_KEY, tab);
+    showToast(message, type || 'success');
+    // Swal success popup lalu reload
+    Swal.fire({
+      icon: type === 'warning' ? 'warning' : 'success',
+      title: type === 'warning' ? 'Dihapus!' : 'Berhasil!',
+      text: message,
+      timer: 1800,
+      timerProgressBar: true,
+      showConfirmButton: false,
+    }).then(function () { window.location.reload(); });
+  }
+
+  // ── Swal config default ──
+  var swalBase = {
+    showCancelButton: true,
+    confirmButtonText: 'Simpan',
+    cancelButtonText: 'Batal',
+    reverseButtons: true,
+  };
 
   // ── Tabs ──
+  function activateTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
+    var btn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+    var panel = document.getElementById('tab-' + tabName);
+    if (btn) btn.classList.add('active');
+    if (panel) panel.classList.add('active');
+  }
+
   document.querySelectorAll('.tab-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
-      document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
-      btn.classList.add('active');
-      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      activateTab(btn.dataset.tab);
+      sessionStorage.setItem(TAB_KEY, btn.dataset.tab);
     });
   });
 
-  // Open tab from URL hash
-  if (window.location.hash === '#tab-activities') {
-    document.querySelector('[data-tab="activities"]').click();
+  var savedTab = sessionStorage.getItem(TAB_KEY);
+  if (savedTab) {
+    activateTab(savedTab);
+  } else if (window.location.hash === '#tab-activities') {
+    activateTab('activities');
   }
 
   // ── Progress slider ──
-  var slider = document.getElementById('progress-slider');
+  var slider  = document.getElementById('progress-slider');
   var display = document.getElementById('progress-display');
+  var sliderVal = document.getElementById('slider-val');
+  var barFisik  = document.getElementById('progress-bar-fisik');
   var debounceTimer;
   if (slider) {
     slider.addEventListener('input', function () {
-      display.textContent = slider.value + '%';
+      var v = slider.value + '%';
+      if (display)   display.textContent  = v;
+      if (sliderVal) sliderVal.textContent = v;
+      if (barFisik)  barFisik.style.width  = slider.value + '%';
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(function () {
         fetch('/projects/' + pid + '/progress', {
@@ -325,98 +356,133 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ value: parseInt(slider.value) }),
         });
-      }, 350);
+      }, 400);
     });
   }
 
   window.appSocket && window.appSocket.on('progress_update', function (data) {
-    if (data.project_id !== pid) return;
-    if (slider) slider.value = data.progress;
-    if (display) display.textContent = data.progress + '%';
+    if (String(data.project_id) !== String(pid)) return;
+    var v = data.progress + '%';
+    if (slider)    slider.value           = data.progress;
+    if (display)   display.textContent    = v;
+    if (sliderVal) sliderVal.textContent  = v;
+    if (barFisik)  barFisik.style.width   = v;
   });
 
-  // ── Activity: add row ──
+  // ── Activity: tambah ──
   document.getElementById('add-activity-btn').addEventListener('click', function () {
-    var nama = prompt('Nama kegiatan:');
-    if (!nama || !nama.trim()) return;
-    fetch('/activities/project/' + pid + '/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nama: nama.trim() }),
-    }).then(function(r){ return r.json(); }).then(function (a) {
-      appendActivityRow(a);
-      showToast('Kegiatan ditambahkan', 'success');
+    Swal.fire(Object.assign({}, swalBase, {
+      title: '📅 Tambah Kegiatan',
+      html:
+        '<div class="sw-form-row" style="margin-top:4px">' +
+          '<div><label class="sw-label">Nama Kegiatan *</label>' +
+          '<input id="sw-act-nama" class="sw-input" placeholder="Nama kegiatan..."></div>' +
+        '</div>' +
+        '<div class="sw-form-row cols-2">' +
+          '<div><label class="sw-label">Tanggal</label>' +
+          '<input id="sw-act-tgl" class="sw-input" type="date"></div>' +
+          '<div><label class="sw-label">Pelaksana</label>' +
+          '<input id="sw-act-pel" class="sw-input" placeholder="Nama pelaksana"></div>' +
+        '</div>' +
+        '<div class="sw-form-row cols-2">' +
+          '<div><label class="sw-label">Jam Mulai</label>' +
+          '<input id="sw-act-mulai" class="sw-input" type="time"></div>' +
+          '<div><label class="sw-label">Jam Selesai</label>' +
+          '<input id="sw-act-selesai" class="sw-input" type="time"></div>' +
+        '</div>' +
+        '<div class="sw-form-row">' +
+          '<div><label class="sw-label">Lokasi</label>' +
+          '<input id="sw-act-lokasi" class="sw-input" placeholder="Lokasi kegiatan"></div>' +
+        '</div>',
+      focusConfirm: false,
+      preConfirm: function () {
+        var nama = document.getElementById('sw-act-nama').value.trim();
+        if (!nama) { Swal.showValidationMessage('Nama kegiatan wajib diisi'); return false; }
+        return {
+          nama:       nama,
+          tanggal:    document.getElementById('sw-act-tgl').value || null,
+          pelaksana:  document.getElementById('sw-act-pel').value || null,
+          jam_mulai:  document.getElementById('sw-act-mulai').value || null,
+          jam_selesai:document.getElementById('sw-act-selesai').value || null,
+          lokasi:     document.getElementById('sw-act-lokasi').value || null,
+        };
+      },
+    })).then(function (result) {
+      if (!result.isConfirmed) return;
+      fetch('/activities/project/' + pid + '/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(result.value),
+      }).then(function () {
+        refreshAfter('activities', 'Kegiatan berhasil ditambahkan!', 'success');
+      });
     });
   });
 
-  function appendActivityRow(a) {
-    var tbody = document.getElementById('activity-tbody');
-    var rowNum = tbody.rows.length + 1;
-    var tr = document.createElement('tr');
-    tr.setAttribute('data-id', a.id);
-    tr.innerHTML =
-      '<td style="color:var(--text-muted);font-family:var(--font-mono)">' + rowNum + '</td>' +
-      '<td>' + (a.nama || '') + '</td>' +
-      '<td>' + (a.tanggal || '—') + '</td>' +
-      '<td>' + (a.jam_mulai || '—') + '</td>' +
-      '<td>' + (a.jam_selesai || '—') + '</td>' +
-      '<td style="font-family:var(--font-mono)">' + (a.durasi_fmt || '—') + '</td>' +
-      '<td>' + (a.pelaksana || '—') + '</td>' +
-      '<td><span class="badge badge-' + (a.status||'pending') + ' badge-clickable">' + capitalize(a.status||'pending') + '</span></td>' +
-      '<td>' +
-        '<a href="/meeting/activity/' + a.id + '" class="btn-icon" title="Note Rapat">📋</a>' +
-        '<button class="btn-icon danger delete-activity-btn" data-id="' + a.id + '" title="Hapus">✕</button>' +
-      '</td>';
-    tbody.appendChild(tr);
-  }
-
-  // Activity: delete
+  // Activity: hapus
   document.getElementById('activity-tbody').addEventListener('click', function (e) {
     var btn = e.target.closest('.delete-activity-btn');
     if (!btn) return;
-    if (!confirm('Hapus kegiatan ini?')) return;
-    var id = btn.dataset.id;
-    fetch('/activities/' + id + '/delete', { method: 'POST' }).then(function () {
-      btn.closest('tr').remove();
-      renumberRows('activity-tbody');
-      showToast('Kegiatan dihapus', 'warning');
+    Swal.fire({
+      icon: 'warning',
+      title: 'Hapus Kegiatan?',
+      text: 'Data kegiatan ini akan dihapus permanen.',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      reverseButtons: true,
+    }).then(function (r) {
+      if (!r.isConfirmed) return;
+      fetch('/activities/' + btn.dataset.id + '/delete', { method: 'POST' }).then(function () {
+        refreshAfter('activities', 'Kegiatan berhasil dihapus.', 'warning');
+      });
     });
   });
 
-  // ── Members ──
-  var addMemberBtn = document.getElementById('add-member-btn');
-  var addMemberForm = document.getElementById('add-member-form');
-  addMemberBtn.addEventListener('click', function () { addMemberForm.style.display = 'block'; });
-  document.getElementById('cancel-member-btn').addEventListener('click', function () { addMemberForm.style.display = 'none'; });
-  document.getElementById('save-member-btn').addEventListener('click', function () {
-    var nama = document.getElementById('new-member-name').value.trim();
-    if (!nama) return;
-    fetch('/members/project/' + pid + '/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nama: nama }),
-    }).then(function(r){ return r.json(); }).then(function (m) {
-      var tbody = document.getElementById('member-tbody');
-      var tr = document.createElement('tr');
-      tr.setAttribute('data-id', m.id);
-      tr.innerHTML =
-        '<td>' + m.nama + '</td>' +
-        '<td><span class="badge badge-on_progress badge-clickable toggle-member" data-id="' + m.id + '" data-aktif="1">Aktif</span></td>' +
-        '<td><button class="btn-icon danger delete-member-btn" data-id="' + m.id + '" title="Hapus">✕</button></td>';
-      tbody.appendChild(tr);
-      document.getElementById('new-member-name').value = '';
-      addMemberForm.style.display = 'none';
-      showToast('Anggota ditambahkan', 'success');
+  // ── Anggota: tambah ──
+  document.getElementById('add-member-btn').addEventListener('click', function () {
+    Swal.fire(Object.assign({}, swalBase, {
+      title: '👥 Tambah Anggota Tim',
+      html:
+        '<div class="sw-form-row" style="margin-top:4px">' +
+          '<div><label class="sw-label">Nama Lengkap *</label>' +
+          '<input id="sw-mem-nama" class="sw-input" placeholder="Nama anggota..."></div>' +
+        '</div>',
+      focusConfirm: false,
+      preConfirm: function () {
+        var nama = document.getElementById('sw-mem-nama').value.trim();
+        if (!nama) { Swal.showValidationMessage('Nama anggota wajib diisi'); return false; }
+        return nama;
+      },
+    })).then(function (result) {
+      if (!result.isConfirmed) return;
+      fetch('/members/project/' + pid + '/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nama: result.value }),
+      }).then(function () {
+        refreshAfter('members', 'Anggota berhasil ditambahkan!', 'success');
+      });
     });
   });
 
+  // Anggota: hapus & toggle
   document.getElementById('member-tbody').addEventListener('click', function (e) {
     var del = e.target.closest('.delete-member-btn');
     if (del) {
-      if (!confirm('Hapus anggota ini?')) return;
-      fetch('/members/' + del.dataset.id + '/delete', { method: 'POST' }).then(function () {
-        del.closest('tr').remove();
-        showToast('Anggota dihapus', 'warning');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Hapus Anggota?',
+        text: 'Anggota ini akan dihapus dari project.',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+        reverseButtons: true,
+      }).then(function (r) {
+        if (!r.isConfirmed) return;
+        fetch('/members/' + del.dataset.id + '/delete', { method: 'POST' }).then(function () {
+          refreshAfter('members', 'Anggota berhasil dihapus.', 'warning');
+        });
       });
       return;
     }
@@ -427,114 +493,143 @@
           tog.dataset.aktif = d.aktif;
           tog.className = 'badge badge-clickable toggle-member ' + (d.aktif ? 'badge-on_progress' : 'badge-hold');
           tog.textContent = d.aktif ? 'Aktif' : 'Non-aktif';
+          Swal.fire({
+            icon: 'success',
+            title: d.aktif ? 'Diaktifkan' : 'Dinonaktifkan',
+            timer: 1000,
+            showConfirmButton: false,
+          });
         });
     }
   });
 
-  // ── Budget ──
+  // ── Anggaran: tambah ──
   document.getElementById('add-budget-btn').addEventListener('click', function () {
-    document.getElementById('add-budget-form').style.display = 'block';
-  });
-  document.getElementById('cancel-budget-btn').addEventListener('click', function () {
-    document.getElementById('add-budget-form').style.display = 'none';
-  });
-  document.getElementById('save-budget-btn').addEventListener('click', function () {
-    var payload = {
-      kategori:    document.getElementById('bi-kategori').value,
-      nama_item:   document.getElementById('bi-nama').value,
-      qty:         parseFloat(document.getElementById('bi-qty').value) || 0,
-      satuan:      document.getElementById('bi-satuan').value,
-      harga_satuan:parseFloat(document.getElementById('bi-harga').value) || 0,
-      realisasi:   parseFloat(document.getElementById('bi-realisasi').value) || 0,
-      keterangan:  document.getElementById('bi-keterangan').value,
-    };
-    fetch('/budget/project/' + pid + '/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }).then(function(r){ return r.json(); }).then(function (d) {
-      var b = d.item;
-      var tbody = document.getElementById('budget-tbody');
-      var tr = document.createElement('tr');
-      tr.setAttribute('data-id', b.id);
-      tr.innerHTML =
-        '<td>' + (b.kategori||'—') + '</td><td>' + (b.nama_item||'—') + '</td>' +
-        '<td style="font-family:var(--font-mono)">' + b.qty + '</td>' +
-        '<td>' + (b.satuan||'—') + '</td>' +
-        '<td style="font-family:var(--font-mono)">Rp ' + fmtRp(b.harga_satuan) + '</td>' +
-        '<td style="font-family:var(--font-mono)">Rp ' + fmtRp(b.total_item) + '</td>' +
-        '<td style="font-family:var(--font-mono)">Rp ' + fmtRp(b.realisasi) + '</td>' +
-        '<td><button class="btn-icon danger delete-budget-btn" data-id="' + b.id + '" title="Hapus">✕</button></td>';
-      tbody.appendChild(tr);
-      updateBudgetSummary(d.summary);
-      document.getElementById('add-budget-form').style.display = 'none';
-      showToast('Item anggaran ditambahkan', 'success');
+    Swal.fire(Object.assign({}, swalBase, {
+      title: '💰 Tambah Item Anggaran',
+      width: 560,
+      html:
+        '<div class="sw-form-row cols-2" style="margin-top:4px">' +
+          '<div><label class="sw-label">Kategori</label>' +
+          '<select id="sw-kat" class="sw-input">' +
+            '<option>SDM</option><option>Operasional</option><option>Peralatan</option><option>Lainnya</option>' +
+          '</select></div>' +
+          '<div><label class="sw-label">Nama Item *</label>' +
+          '<input id="sw-nama" class="sw-input" placeholder="Nama pengeluaran"></div>' +
+        '</div>' +
+        '<div class="sw-form-row cols-3">' +
+          '<div><label class="sw-label">Qty</label>' +
+          '<input id="sw-qty" class="sw-input" type="number" min="0" value="1"></div>' +
+          '<div><label class="sw-label">Satuan</label>' +
+          '<input id="sw-sat" class="sw-input" placeholder="pcs/jam/hari"></div>' +
+          '<div><label class="sw-label">Harga Satuan (Rp)</label>' +
+          '<input id="sw-harga" class="sw-input" type="number" min="0" value="0"></div>' +
+        '</div>' +
+        '<div class="sw-form-row cols-2">' +
+          '<div><label class="sw-label">Realisasi (Rp)</label>' +
+          '<input id="sw-real" class="sw-input" type="number" min="0" value="0"></div>' +
+          '<div><label class="sw-label">Keterangan</label>' +
+          '<input id="sw-ket" class="sw-input" placeholder="Opsional"></div>' +
+        '</div>',
+      focusConfirm: false,
+      preConfirm: function () {
+        var nama = document.getElementById('sw-nama').value.trim();
+        if (!nama) { Swal.showValidationMessage('Nama item wajib diisi'); return false; }
+        return {
+          kategori:     document.getElementById('sw-kat').value,
+          nama_item:    nama,
+          qty:          parseFloat(document.getElementById('sw-qty').value) || 0,
+          satuan:       document.getElementById('sw-sat').value,
+          harga_satuan: parseFloat(document.getElementById('sw-harga').value) || 0,
+          realisasi:    parseFloat(document.getElementById('sw-real').value) || 0,
+          keterangan:   document.getElementById('sw-ket').value,
+        };
+      },
+    })).then(function (result) {
+      if (!result.isConfirmed) return;
+      fetch('/budget/project/' + pid + '/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(result.value),
+      }).then(function () {
+        refreshAfter('budget', 'Item anggaran berhasil ditambahkan!', 'success');
+      });
     });
   });
 
+  // Anggaran: hapus
   document.getElementById('budget-tbody').addEventListener('click', function (e) {
     var btn = e.target.closest('.delete-budget-btn');
     if (!btn) return;
-    if (!confirm('Hapus item anggaran ini?')) return;
-    fetch('/budget/' + btn.dataset.id + '/delete', { method: 'POST' })
-      .then(function(r){ return r.json(); }).then(function (d) {
-        btn.closest('tr').remove();
-        updateBudgetSummary(d.summary);
-        showToast('Item dihapus', 'warning');
+    Swal.fire({
+      icon: 'warning',
+      title: 'Hapus Item Anggaran?',
+      text: 'Item ini akan dihapus permanen.',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal',
+      reverseButtons: true,
+    }).then(function (r) {
+      if (!r.isConfirmed) return;
+      fetch('/budget/' + btn.dataset.id + '/delete', { method: 'POST' }).then(function () {
+        refreshAfter('budget', 'Item anggaran berhasil dihapus.', 'warning');
       });
+    });
   });
 
   window.appSocket && window.appSocket.on('budget_changed', function (data) {
     if (data.project_id !== pid) return;
-    updateBudgetSummary(data.summary);
+    setTimeout(function () { window.location.reload(); }, 1200);
   });
 
-  function updateBudgetSummary(s) {
-    var el = function(id){ return document.getElementById(id); };
-    if (el('bs-total')) el('bs-total').textContent = 'Rp ' + fmtRp(s.total);
-    if (el('bs-realisasi')) el('bs-realisasi').textContent = 'Rp ' + fmtRp(s.realisasi);
-    if (el('bs-sisa')) el('bs-sisa').textContent = 'Rp ' + fmtRp(s.sisa);
-    if (el('bs-pct')) el('bs-pct').textContent = s.pct + '%';
-  }
-
-  // ── Milestones ──
+  // ── Milestone: tambah ──
   document.getElementById('add-milestone-btn').addEventListener('click', function () {
-    document.getElementById('add-milestone-form').style.display = 'block';
-  });
-  document.getElementById('cancel-milestone-btn').addEventListener('click', function () {
-    document.getElementById('add-milestone-form').style.display = 'none';
-  });
-  document.getElementById('save-milestone-btn').addEventListener('click', function () {
-    var nama = document.getElementById('ms-nama').value.trim();
-    if (!nama) return;
-    fetch('/budget/milestone/' + pid + '/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nama: nama, target_date: document.getElementById('ms-date').value }),
-    }).then(function(r){ return r.json(); }).then(function (m) {
-      var tbody = document.getElementById('milestone-tbody');
-      var tr = document.createElement('tr');
-      tr.setAttribute('data-id', m.id);
-      tr.innerHTML =
-        '<td>' + m.nama + '</td>' +
-        '<td style="font-family:var(--font-mono)">' + (m.target_date||'—') + '</td>' +
-        '<td><span class="badge badge-pending badge-clickable toggle-milestone" data-id="' + m.id + '" data-selesai="0">Belum</span></td>' +
-        '<td><button class="btn-icon danger delete-milestone-btn" data-id="' + m.id + '" title="Hapus">✕</button></td>';
-      tbody.appendChild(tr);
-      document.getElementById('ms-nama').value = '';
-      document.getElementById('ms-date').value = '';
-      document.getElementById('add-milestone-form').style.display = 'none';
-      showToast('Milestone ditambahkan', 'success');
+    Swal.fire(Object.assign({}, swalBase, {
+      title: '🎯 Tambah Milestone',
+      html:
+        '<div class="sw-form-row" style="margin-top:4px">' +
+          '<div><label class="sw-label">Nama Milestone *</label>' +
+          '<input id="sw-ms-nama" class="sw-input" placeholder="Target capaian..."></div>' +
+        '</div>' +
+        '<div class="sw-form-row">' +
+          '<div><label class="sw-label">Target Tanggal</label>' +
+          '<input id="sw-ms-tgl" class="sw-input" type="date"></div>' +
+        '</div>',
+      focusConfirm: false,
+      preConfirm: function () {
+        var nama = document.getElementById('sw-ms-nama').value.trim();
+        if (!nama) { Swal.showValidationMessage('Nama milestone wajib diisi'); return false; }
+        return { nama: nama, target_date: document.getElementById('sw-ms-tgl').value || null };
+      },
+    })).then(function (result) {
+      if (!result.isConfirmed) return;
+      fetch('/budget/milestone/' + pid + '/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(result.value),
+      }).then(function () {
+        refreshAfter('milestones', 'Milestone berhasil ditambahkan!', 'success');
+      });
     });
   });
 
+  // Milestone: hapus & toggle
   document.getElementById('milestone-tbody').addEventListener('click', function (e) {
     var del = e.target.closest('.delete-milestone-btn');
     if (del) {
-      if (!confirm('Hapus milestone ini?')) return;
-      fetch('/budget/milestone/' + del.dataset.id + '/delete', { method: 'POST' }).then(function () {
-        del.closest('tr').remove();
-        showToast('Milestone dihapus', 'warning');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Hapus Milestone?',
+        text: 'Milestone ini akan dihapus permanen.',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+        reverseButtons: true,
+      }).then(function (r) {
+        if (!r.isConfirmed) return;
+        fetch('/budget/milestone/' + del.dataset.id + '/delete', { method: 'POST' }).then(function () {
+          refreshAfter('milestones', 'Milestone berhasil dihapus.', 'warning');
+        });
       });
       return;
     }
@@ -542,29 +637,13 @@
     if (tog) {
       fetch('/budget/milestone/' + tog.dataset.id + '/toggle', { method: 'POST' })
         .then(function(r){ return r.json(); }).then(function (d) {
-          tog.dataset.selesai = d.selesai;
-          tog.className = 'badge badge-clickable toggle-milestone ' + (d.selesai ? 'badge-done' : 'badge-pending');
-          tog.textContent = d.selesai ? 'Selesai' : 'Belum';
+          refreshAfter('milestones', d.selesai ? '✅ Milestone ditandai selesai!' : 'Milestone dibuka kembali.', 'success');
         });
     }
   });
 
   // ── Helpers ──
-  function renumberRows(tbodyId) {
-    var rows = document.getElementById(tbodyId).rows;
-    for (var i = 0; i < rows.length; i++) {
-      var first = rows[i].cells[0];
-      if (first) first.textContent = i + 1;
-    }
-  }
-
-  function fmtRp(n) {
-    return Math.round(n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  }
-
-  function capitalize(s) {
-    return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
-  }
+  function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 })();
 </script>
 {% endblock %}

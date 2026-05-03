@@ -16,7 +16,7 @@
 </div>
 
 <form method="POST"
-      action="{{ url_for('project.update_project', id=project.id) if is_edit else url_for('project.new_project') }}"
+      action="{{ url_for('project.edit_project', id=project.id) if is_edit else url_for('project.new_project') }}"
       class="form-card">
 
   <div class="form-section">
