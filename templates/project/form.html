@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% set is_edit = project is not none %}
+{% block title %}{{ 'Edit' if is_edit else 'New' }} Project — MonitorPro{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+{% endblock %}
+{% block topbar_title %}{{ 'Edit Project' if is_edit else 'Project Baru' }}{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('project.list_projects') }}">Projects</a> /
+  {{ 'Edit: ' + project.judul if is_edit else 'New Project' }}
+</div>
+<div class="page-header" style="margin-top:12px">
+  <h1>{{ 'Edit Project' if is_edit else 'Tambah Project Baru' }}</h1>
+</div>
+
+<form method="POST"
+      action="{{ url_for('project.update_project', id=project.id) if is_edit else url_for('project.new_project') }}"
+      class="form-card">
+
+  <div class="form-section">
+    <div class="form-section-title">Informasi Umum</div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Kode Project <span class="required">*</span></label>
+        <input class="form-control" type="text" name="kode" required
+               value="{{ project.kode if is_edit else '' }}"
+               placeholder="e.g. PRJ-2024-001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Judul Project <span class="required">*</span></label>
+        <input class="form-control" type="text" name="judul" required
+               value="{{ project.judul if is_edit else '' }}"
+               placeholder="Nama project">
+      </div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">PIC (Person In Charge)</label>
+        <input class="form-control" type="text" name="pic"
+               value="{{ project.pic if is_edit else '' }}"
+               placeholder="Nama penanggung jawab">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Lokasi / Klien</label>
+        <input class="form-control" type="text" name="klien"
+               value="{{ project.klien if is_edit else '' }}"
+               placeholder="Nama klien atau lokasi">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Deskripsi Singkat</label>
+      <textarea class="form-control" name="deskripsi" rows="3"
+                placeholder="Gambaran umum project">{{ project.deskripsi if is_edit else '' }}</textarea>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-title">Timeline & Status</div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Tanggal Mulai</label>
+        <input class="form-control" type="date" name="start_date"
+               value="{{ project.start_date if is_edit else '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tanggal Selesai</label>
+        <input class="form-control" type="date" name="end_date"
+               value="{{ project.end_date if is_edit else '' }}">
+      </div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-control" name="status">
+          {% for val, label in [('planning','Planning'),('on_progress','On Progress'),('done','Done'),('hold','Hold')] %}
+          <option value="{{ val }}" {{ 'selected' if (is_edit and project.status == val) or (not is_edit and val == 'planning') }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Prioritas</label>
+        <select class="form-control" name="prioritas">
+          {% for val, label in [('low','Low'),('medium','Medium'),('high','High'),('critical','Critical')] %}
+          <option value="{{ val }}" {{ 'selected' if (is_edit and project.prioritas == val) or (not is_edit and val == 'medium') }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a href="{{ url_for('project.project_detail', id=project.id) if is_edit else url_for('project.list_projects') }}" class="btn btn-secondary">Batal</a>
+    <button type="submit" class="btn btn-primary">{{ 'Simpan Perubahan' if is_edit else 'Buat Project' }}</button>
+  </div>
+</form>
+{% endblock %}

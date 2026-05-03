@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — MonitorPro{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block topbar_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Dashboard</h1>
+    <p style="color:var(--text-secondary);font-size:.9rem;margin-top:4px">Ringkasan semua proyek aktif</p>
+  </div>
+  <a href="{{ url_for('project.new_project') }}" class="btn btn-primary">＋ Project Baru</a>
+</div>
+
+<!-- Stats row -->
+<div class="stats-grid section">
+  <div class="stat-card">
+    <div class="stat-value">{{ total_projects }}</div>
+    <div class="stat-label">Total Project</div>
+  </div>
+  <div class="stat-card accent">
+    <div class="stat-value">{{ active_projects }}</div>
+    <div class="stat-label">Sedang Berjalan</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ projects | selectattr('status','eq','done') | list | length }}</div>
+    <div class="stat-label">Selesai</div>
+  </div>
+  <div class="stat-card warning">
+    <div class="stat-value">{{ projects | selectattr('status','eq','hold') | list | length }}</div>
+    <div class="stat-label">On Hold</div>
+  </div>
+</div>
+
+<!-- Project cards -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">Semua Project</span>
+    <a href="{{ url_for('project.list_projects') }}" class="btn btn-secondary btn-sm">Lihat Semua</a>
+  </div>
+  {% if projects %}
+  <div class="project-grid" id="project-cards">
+    {% for p in projects %}
+    <div class="project-card" data-id="{{ p.id }}" data-status="{{ p.status }}">
+      <div class="project-card-header">
+        <div>
+          <div class="project-card-code">{{ p.kode }}</div>
+          <div class="project-card-title">
+            <a href="{{ url_for('project.project_detail', id=p.id) }}">{{ p.judul }}</a>
+          </div>
+        </div>
+        <div class="badge badge-{{ p.status }}">
+          {{ {'planning':'Planning','on_progress':'On Progress','done':'Done','hold':'Hold'}.get(p.status, p.status) }}
+        </div>
+      </div>
+      {% if p.deskripsi %}
+      <p class="project-card-desc">{{ p.deskripsi[:100] }}{% if p.deskripsi|length > 100 %}…{% endif %}</p>
+      {% endif %}
+      <div class="project-card-meta">
+        {% if p.pic %}<span>👤 {{ p.pic }}</span>{% endif %}
+        {% if p.klien %}<span>🏢 {{ p.klien }}</span>{% endif %}
+        <span class="badge badge-{{ p.prioritas }}">{{ p.prioritas|capitalize }}</span>
+      </div>
+      <div class="project-card-progress">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:.8rem">
+          <span style="color:var(--text-secondary)">Progress Fisik</span>
+          <span class="progress-val" style="color:var(--accent);font-weight:600">{{ p.progress }}%</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar" style="width:{{ p.progress }}%"></div>
+        </div>
+      </div>
+      {% if p.start_date or p.end_date %}
+      <div class="project-card-dates">
+        {% if p.start_date %}<span>📅 {{ p.start_date }}</span>{% endif %}
+        {% if p.end_date %}<span>🏁 {{ p.end_date }}</span>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state card">
+    <div class="empty-state-icon">◻</div>
+    <p>Belum ada project. <a href="{{ url_for('project.new_project') }}">Buat project pertama</a>.</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Recent activities -->
+{% if recent_activities %}
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">Aktivitas Terbaru</span>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>Kegiatan</th>
+            <th>Tanggal</th>
+            <th>Pelaksana</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="recent-activity-list">
+          {% for a in recent_activities %}
+          <tr>
+            <td><a href="{{ url_for('project.project_detail', id=a.project_id if a.project_id else '#') }}">{{ a.project_judul }}</a></td>
+            <td>{{ a.nama }}</td>
+            <td>{{ a.tanggal or '—' }}</td>
+            <td>{{ a.pelaksana or '—' }}</td>
+            <td><span class="badge badge-{{ a.status }}">{{ a.status|capitalize }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Kegiatan — {{ project.judul }}{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+<style>
+  .act-input {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-family: var(--font);
+    font-size: .875rem;
+    width: 100%;
+    outline: none;
+    padding: 2px 4px;
+  }
+  .act-input:focus {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--accent);
+    padding: 2px 6px;
+  }
+  textarea.act-input { resize: vertical; min-height: 40px; }
+  #activity-table td { padding: 8px 10px; }
+  .row-num { color: var(--text-muted); font-family: var(--font-mono); font-size:.8rem; }
+</style>
+{% endblock %}
+{% block topbar_title %}Kegiatan: {{ project.judul }}{% endblock %}
+
+{% block content %}
+<script>window.CURRENT_PROJECT_ID = {{ project.id }};</script>
+
+<div class="breadcrumb">
+  <a href="{{ url_for('project.list_projects') }}">Projects</a> /
+  <a href="{{ url_for('project.project_detail', id=project.id) }}">{{ project.judul }}</a> /
+  Kegiatan
+</div>
+<div class="page-header" style="margin-top:12px">
+  <h1>Tabel Kegiatan</h1>
+  <div style="display:flex;gap:8px">
+    <a href="{{ url_for('project.project_detail', id=project.id) }}" class="btn btn-secondary">← Kembali</a>
+    <button class="btn btn-primary" id="add-row-btn">＋ Tambah Baris</button>
+  </div>
+</div>
+
+<div class="card" style="padding:0;margin-bottom:24px">
+  <div class="table-wrap">
+    <table id="activity-table">
+      <thead>
+        <tr>
+          <th style="width:40px">No</th>
+          <th style="min-width:180px">Nama Kegiatan</th>
+          <th style="min-width:110px">Tanggal</th>
+          <th style="width:80px">Mulai</th>
+          <th style="width:80px">Selesai</th>
+          <th style="width:70px">Durasi</th>
+          <th style="min-width:120px">Pelaksana</th>
+          <th style="min-width:120px">Lokasi</th>
+          <th style="min-width:180px">Output</th>
+          <th style="width:90px">Status</th>
+          <th style="min-width:120px">Catatan</th>
+          <th style="width:70px">Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="activity-tbody">
+        {% for a in activities %}
+        <tr data-id="{{ a.id }}">
+          <td class="row-num">{{ loop.index }}</td>
+          <td><input class="act-input" name="nama" value="{{ a.nama }}" data-field="nama"></td>
+          <td><input class="act-input" name="tanggal" type="date" value="{{ a.tanggal or '' }}" data-field="tanggal"></td>
+          <td><input class="act-input" name="jam_mulai" type="time" value="{{ a.jam_mulai or '' }}" data-field="jam_mulai"></td>
+          <td><input class="act-input" name="jam_selesai" type="time" value="{{ a.jam_selesai or '' }}" data-field="jam_selesai"></td>
+          <td class="durasi-cell row-num">{{ a.durasi_fmt if a.durasi_fmt is defined else '—' }}</td>
+          <td>
+            <select class="act-input" name="pelaksana" data-field="pelaksana">
+              <option value="">—</option>
+              {% for m in members %}<option value="{{ m.nama }}" {{ 'selected' if a.pelaksana == m.nama }}>{{ m.nama }}</option>{% endfor %}
+              <option value="{{ a.pelaksana }}" {{ 'selected' if a.pelaksana and a.pelaksana not in (members|map(attribute='nama')|list) }}>{{ a.pelaksana }}</option>
+            </select>
+          </td>
+          <td><input class="act-input" name="lokasi" value="{{ a.lokasi or '' }}" data-field="lokasi"></td>
+          <td><textarea class="act-input" name="output" data-field="output" rows="1">{{ a.output or '' }}</textarea></td>
+          <td>
+            <span class="badge badge-{{ a.status }} badge-clickable status-badge" data-id="{{ a.id }}" data-status="{{ a.status }}">
+              {{ a.status|capitalize }}
+            </span>
+          </td>
+          <td><input class="act-input" name="catatan" value="{{ a.catatan or '' }}" data-field="catatan"></td>
+          <td>
+            <a href="{{ url_for('meeting.meeting_note', aid=a.id) }}" class="btn-icon" title="Note Rapat">📋</a>
+            <button class="btn-icon danger delete-row-btn" data-id="{{ a.id }}" title="Hapus">✕</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Hidden template row -->
+<template id="activity-row-template">
+  <tr data-id="" data-new="true">
+    <td class="row-num"></td>
+    <td><input class="act-input" name="nama" placeholder="Nama kegiatan" data-field="nama"></td>
+    <td><input class="act-input" name="tanggal" type="date" data-field="tanggal"></td>
+    <td><input class="act-input" name="jam_mulai" type="time" data-field="jam_mulai"></td>
+    <td><input class="act-input" name="jam_selesai" type="time" data-field="jam_selesai"></td>
+    <td class="durasi-cell row-num">—</td>
+    <td>
+      <select class="act-input" name="pelaksana" data-field="pelaksana">
+        <option value="">—</option>
+        {% for m in members %}<option value="{{ m.nama }}">{{ m.nama }}</option>{% endfor %}
+      </select>
+    </td>
+    <td><input class="act-input" name="lokasi" placeholder="Lokasi" data-field="lokasi"></td>
+    <td><textarea class="act-input" name="output" placeholder="Output/Hasil" data-field="output" rows="1"></textarea></td>
+    <td><span class="badge badge-pending badge-clickable status-badge" data-status="pending">Pending</span></td>
+    <td><input class="act-input" name="catatan" placeholder="Catatan" data-field="catatan"></td>
+    <td>
+      <span class="btn-icon">📋</span>
+      <button class="btn-icon danger delete-row-btn" title="Hapus">✕</button>
+    </td>
+  </tr>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/table.js') }}"></script>
+{% endblock %}

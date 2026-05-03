@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block title %}Note Rapat — {{ activity.nama }}{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+{% endblock %}
+{% block topbar_title %}Note Rapat{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('project.list_projects') }}">Projects</a> /
+  <a href="{{ url_for('project.project_detail', id=activity.project_id) }}">{{ activity.project_judul }}</a> /
+  <a href="{{ url_for('activity.activity_table', pid=activity.project_id) }}">Kegiatan</a> /
+  Note Rapat
+</div>
+<div class="page-header" style="margin-top:12px">
+  <div>
+    <h1>Note Rapat</h1>
+    <p style="color:var(--text-secondary);font-size:.88rem;margin-top:4px">
+      Kegiatan: <strong>{{ activity.nama }}</strong>
+      {% if activity.tanggal %} · {{ activity.tanggal }}{% endif %}
+    </p>
+  </div>
+  <a href="{{ url_for('project.project_detail', id=activity.project_id) }}" class="btn btn-secondary">← Kembali</a>
+</div>
+
+<!-- Existing notes -->
+{% if notes %}
+<div class="section">
+  <div class="section-header"><span class="section-title">Rapat Sebelumnya ({{ notes|length }})</span></div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    {% for n in notes %}
+    <div class="card" id="note-{{ n.id }}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-weight:600;font-size:1rem">{{ n.judul }}</div>
+          {% if n.tanggal %}<div style="font-size:.8rem;color:var(--text-muted)">{{ n.tanggal }}</div>{% endif %}
+        </div>
+        {% if n.notulis %}
+        <span style="font-size:.8rem;color:var(--text-secondary)">Notulis: {{ n.notulis }}</span>
+        {% endif %}
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="loadNoteDetail({{ n.id }}, this)">Lihat Detail</button>
+      <div class="note-detail-container" style="display:none;margin-top:12px"></div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<hr class="divider">
+{% endif %}
+
+<!-- New note form -->
+<div class="section">
+  <div class="section-header"><span class="section-title">Tambah Note Rapat Baru</span></div>
+  <form method="POST" enctype="multipart/form-data" class="form-card">
+    <div class="form-section">
+      <div class="form-section-title">Informasi Rapat</div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Judul Rapat <span class="required">*</span></label>
+          <input class="form-control" type="text" name="judul" required placeholder="Topik / agenda rapat">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tanggal & Jam</label>
+          <input class="form-control" type="datetime-local" name="tanggal">
+        </div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label">Notulis</label>
+          <input class="form-control" type="text" name="notulis" placeholder="Nama notulis" list="member-list">
+          <datalist id="member-list">
+            {% for m in members %}<option value="{{ m.nama }}">{% endfor %}
+          </datalist>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Lampiran Notulen</label>
+          <input class="form-control" type="file" name="lampiran" accept=".pdf,.docx,.xlsx,.doc,.png,.jpg">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">Peserta Hadir</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px" id="attendee-list">
+        {% for m in members %}
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;font-size:.875rem">
+          <input type="checkbox" name="attendee_ids[]" value="{{ m.id }}">
+          {{ m.nama }}
+        </label>
+        {% endfor %}
+      </div>
+      <div class="form-group">
+        <label class="form-label">Peserta Luar (non-anggota, pisahkan dengan koma)</label>
+        <input class="form-control" id="manual-attendees" placeholder="e.g. Budi Santoso, Sari Dewi">
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">Catatan Rapat</div>
+      <div class="form-group">
+        <label class="form-label">Agenda</label>
+        <textarea class="form-control" name="agenda" rows="4" placeholder="Poin-poin yang dibahas dalam rapat"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Hasil / Keputusan</label>
+        <textarea class="form-control" name="hasil" rows="4" placeholder="Kesimpulan dan keputusan rapat"></textarea>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">
+        Tindak Lanjut (Action Items)
+        <button type="button" class="btn btn-secondary btn-sm" id="add-action-btn" style="margin-left:12px">＋ Tambah</button>
+      </div>
+      <div class="table-wrap" style="margin-top:12px">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Uraian Tugas</th><th>PIC</th><th>Deadline</th><th>Status</th><th style="width:40px"></th></tr>
+          </thead>
+          <tbody id="action-tbody">
+            <!-- rows added by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Hidden fields for manual attendees -->
+    <div id="manual-hidden"></div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('project.project_detail', id=activity.project_id) }}" class="btn btn-secondary">Batal</a>
+      <button type="submit" class="btn btn-primary">Simpan Note Rapat</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var members = {{ members | tojson }};
+  var memberOptions = '<option value="">— PIC —</option>' +
+    members.map(function(m){ return '<option value="' + m.id + '">' + m.nama + '</option>'; }).join('');
+
+  var actionTbody = document.getElementById('action-tbody');
+  var actionCount = 0;
+
+  document.getElementById('add-action-btn').addEventListener('click', addActionRow);
+
+  function addActionRow(data) {
+    data = data || {};
+    actionCount++;
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td style="color:var(--text-muted)">' + actionCount + '</td>' +
+      '<td><input class="form-control" name="action_uraian[]" placeholder="Uraian tugas" value="' + (data.uraian||'') + '" required></td>' +
+      '<td><select class="form-control" name="action_pic[]">' + memberOptions + '</select></td>' +
+      '<td><input class="form-control" type="date" name="action_deadline[]" value="' + (data.deadline||'') + '"></td>' +
+      '<td><select class="form-control" name="action_status[]">' +
+        ['belum','proses','selesai'].map(function(s){
+          return '<option value="' + s + '" ' + (s === (data.status||'belum') ? 'selected' : '') + '>' + capitalize(s) + '</option>';
+        }).join('') +
+      '</select></td>' +
+      '<td><button type="button" class="btn-icon danger" onclick="this.closest(\'tr\').remove();renumber()">✕</button></td>';
+    actionTbody.appendChild(tr);
+    return tr;
+  }
+
+  // Pre-add one empty row
+  addActionRow();
+
+  // Manual attendees → hidden fields
+  var form = document.querySelector('form');
+  form.addEventListener('submit', function () {
+    var manual = document.getElementById('manual-attendees').value;
+    var container = document.getElementById('manual-hidden');
+    container.innerHTML = '';
+    if (manual.trim()) {
+      manual.split(',').forEach(function (name) {
+        name = name.trim();
+        if (name) {
+          var inp = document.createElement('input');
+          inp.type = 'hidden';
+          inp.name = 'attendee_manual[]';
+          inp.value = name;
+          container.appendChild(inp);
+        }
+      });
+    }
+  });
+
+  window.renumber = function () {
+    Array.prototype.forEach.call(actionTbody.rows, function (tr, i) {
+      tr.cells[0].textContent = i + 1;
+    });
+    actionCount = actionTbody.rows.length;
+  };
+
+  // Load note detail via API
+  window.loadNoteDetail = function (noteId, btn) {
+    var container = btn.nextElementSibling;
+    if (container.style.display === 'block') {
+      container.style.display = 'none';
+      btn.textContent = 'Lihat Detail';
+      return;
+    }
+    btn.textContent = 'Memuat…';
+    fetch('/meeting/' + noteId + '/detail')
+      .then(function(r){ return r.json(); })
+      .then(function (d) {
+        var note = d.note;
+        var attendees = d.attendees.map(function(a){ return a.member_nama || a.nama_manual; }).filter(Boolean).join(', ');
+        var actions = d.action_items.map(function (a, i) {
+          return '<tr><td style="color:var(--text-muted)">' + (i+1) + '</td>' +
+            '<td>' + (a.uraian||'—') + '</td>' +
+            '<td>' + (a.pic_nama||'—') + '</td>' +
+            '<td>' + (a.deadline||'—') + '</td>' +
+            '<td><span class="badge badge-' + (a.status||'belum') + '">' + capitalize(a.status||'belum') + '</span></td></tr>';
+        }).join('');
+
+        container.innerHTML =
+          (attendees ? '<p style="font-size:.85rem;color:var(--text-secondary);margin-bottom:8px"><strong>Peserta:</strong> ' + attendees + '</p>' : '') +
+          (note.agenda ? '<div style="margin-bottom:12px"><div class="form-label">Agenda</div><div style="font-size:.88rem;color:var(--text-secondary);white-space:pre-wrap">' + note.agenda + '</div></div>' : '') +
+          (note.hasil ? '<div style="margin-bottom:12px"><div class="form-label">Hasil</div><div style="font-size:.88rem;color:var(--text-secondary);white-space:pre-wrap">' + note.hasil + '</div></div>' : '') +
+          (d.action_items.length ?
+            '<div><div class="form-label" style="margin-bottom:8px">Action Items</div><div class="table-wrap"><table><thead><tr><th>#</th><th>Uraian</th><th>PIC</th><th>Deadline</th><th>Status</th></tr></thead><tbody>' + actions + '</tbody></table></div></div>'
+          : '');
+        container.style.display = 'block';
+        btn.textContent = 'Sembunyikan';
+      })
+      .catch(function () {
+        btn.textContent = 'Lihat Detail';
+        window.showToast && window.showToast('Gagal memuat detail', 'error');
+      });
+  };
+
+  function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+})();
+</script>
+{% endblock %}

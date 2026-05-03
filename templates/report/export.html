@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}Laporan — {{ project.judul }}{% endblock %}
+{% block head %}
+<style>
+  #content { padding: 28px; }
+  .report-header { text-align: center; margin-bottom: 32px; border-bottom: 2px solid var(--accent); padding-bottom: 20px; }
+  .report-header h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  .report-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .report-meta-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 16px; }
+  .report-meta-label { font-size: .75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+  .report-meta-value { font-weight: 600; }
+  .report-section { margin-bottom: 28px; }
+  .report-section-title { font-size: 1rem; font-weight: 700; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 14px; text-transform: uppercase; letter-spacing: .05em; }
+  .print-btn { position: fixed; bottom: 24px; right: 24px; z-index: 999; }
+  @media print {
+    #sidebar, #topbar, .print-btn, #toast-container { display: none !important; }
+    #main { margin-left: 0 !important; }
+    #content { padding: 20px !important; }
+    body { background: white !important; color: black !important; }
+    .card, .report-meta-item { background: white !important; border: 1px solid #ccc !important; }
+    th { background: #f0f0f0 !important; color: #333 !important; }
+    td { color: #333 !important; }
+    .badge { border: 1px solid #999 !important; color: #333 !important; }
+    a { color: inherit !important; text-decoration: none !important; }
+    .report-header h1, .report-section-title { color: #000 !important; }
+    table { page-break-inside: avoid; }
+    .report-section { page-break-inside: avoid; }
+  }
+</style>
+{% endblock %}
+{% block topbar_title %}Laporan Project{% endblock %}
+
+{% block content %}
+<div class="report-header">
+  <div style="font-size:.8rem;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:6px">{{ project.kode }}</div>
+  <h1>{{ project.judul }}</h1>
+  <div style="font-size:.85rem;color:var(--text-secondary);margin-top:6px">
+    Digenerate: {{ today }} &nbsp;|&nbsp;
+    <span class="badge badge-{{ project.status }}">{{ {'planning':'Planning','on_progress':'On Progress','done':'Done','hold':'Hold'}.get(project.status, project.status) }}</span>
+    &nbsp;
+    <span class="badge badge-{{ project.prioritas }}">{{ project.prioritas|capitalize }}</span>
+  </div>
+</div>
+
+<!-- Meta -->
+<div class="report-meta-grid">
+  {% if project.pic %}<div class="report-meta-item"><div class="report-meta-label">PIC</div><div class="report-meta-value">{{ project.pic }}</div></div>{% endif %}
+  {% if project.klien %}<div class="report-meta-item"><div class="report-meta-label">Klien / Lokasi</div><div class="report-meta-value">{{ project.klien }}</div></div>{% endif %}
+  {% if project.start_date %}<div class="report-meta-item"><div class="report-meta-label">Tanggal Mulai</div><div class="report-meta-value">{{ project.start_date }}</div></div>{% endif %}
+  {% if project.end_date %}<div class="report-meta-item"><div class="report-meta-label">Target Selesai</div><div class="report-meta-value">{{ project.end_date }}</div></div>{% endif %}
+  <div class="report-meta-item"><div class="report-meta-label">Progress Fisik</div><div class="report-meta-value" style="color:var(--accent)">{{ project.progress }}%</div></div>
+  <div class="report-meta-item"><div class="report-meta-label">Progress Keuangan</div><div class="report-meta-value" style="color:var(--warning)">{{ budget_summary.pct }}%</div></div>
+</div>
+
+{% if project.deskripsi %}
+<div class="report-section">
+  <div class="report-section-title">Deskripsi Project</div>
+  <p style="color:var(--text-secondary);line-height:1.6">{{ project.deskripsi }}</p>
+</div>
+{% endif %}
+
+<!-- Activities -->
+<div class="report-section">
+  <div class="report-section-title">Tabel Kegiatan ({{ activities|length }} kegiatan · Total: {{ total_durasi_fmt }})</div>
+  {% if activities %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>No</th><th>Kegiatan</th><th>Tanggal</th><th>Mulai</th><th>Selesai</th><th>Durasi</th><th>Pelaksana</th><th>Lokasi</th><th>Output</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for a in activities %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ a.nama }}</td>
+          <td>{{ a.tanggal or '—' }}</td>
+          <td>{{ a.jam_mulai or '—' }}</td>
+          <td>{{ a.jam_selesai or '—' }}</td>
+          <td style="font-family:var(--font-mono)">
+            {% if a.durasi %}{% set h = a.durasi // 60 %}{% set m = a.durasi % 60 %}{{ h ~ 'j ' ~ m ~ 'm' if h else m ~ 'm' }}{% else %}—{% endif %}
+          </td>
+          <td>{{ a.pelaksana or '—' }}</td>
+          <td>{{ a.lokasi or '—' }}</td>
+          <td>{{ a.output or '—' }}</td>
+          <td><span class="badge badge-{{ a.status }}">{{ a.status|capitalize }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p style="color:var(--text-muted)">Belum ada kegiatan.</p>{% endif %}
+</div>
+
+<!-- Budget -->
+<div class="report-section">
+  <div class="report-section-title">Rincian Anggaran</div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+    <span>Total: <strong>Rp {{ '{:,.0f}'.format(budget_summary.total).replace(',','.') }}</strong></span>
+    <span>Realisasi: <strong style="color:var(--warning)">Rp {{ '{:,.0f}'.format(budget_summary.realisasi).replace(',','.') }}</strong></span>
+    <span>Sisa: <strong style="color:var(--success)">Rp {{ '{:,.0f}'.format(budget_summary.sisa).replace(',','.') }}</strong></span>
+    <span>Terpakai: <strong>{{ budget_summary.pct }}%</strong></span>
+  </div>
+  {% if budgets %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>No</th><th>Kategori</th><th>Item</th><th>Qty</th><th>Satuan</th><th>Harga</th><th>Total</th><th>Realisasi</th></tr></thead>
+      <tbody>
+        {% for b in budgets %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ b.kategori or '—' }}</td>
+          <td>{{ b.nama_item or '—' }}</td>
+          <td>{{ b.qty }}</td>
+          <td>{{ b.satuan or '—' }}</td>
+          <td>Rp {{ '{:,.0f}'.format(b.harga_satuan or 0).replace(',','.') }}</td>
+          <td>Rp {{ '{:,.0f}'.format(b.total_item or 0).replace(',','.') }}</td>
+          <td>Rp {{ '{:,.0f}'.format(b.realisasi or 0).replace(',','.') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p style="color:var(--text-muted)">Belum ada data anggaran.</p>{% endif %}
+</div>
+
+<!-- Milestones -->
+{% if milestones %}
+<div class="report-section">
+  <div class="report-section-title">Milestone</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>No</th><th>Milestone</th><th>Target</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for m in milestones %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ m.nama }}</td>
+          <td>{{ m.target_date or '—' }}</td>
+          <td><span class="badge {{ 'badge-done' if m.selesai else ('badge-danger' if m.target_date and m.target_date < today and not m.selesai else 'badge-pending') }}">{{ 'Selesai' if m.selesai else ('Terlambat' if m.target_date and m.target_date < today else 'Belum') }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Members -->
+{% if members %}
+<div class="report-section">
+  <div class="report-section-title">Anggota Tim</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px">
+    {% for m in members %}
+    <span class="badge {{ 'badge-on_progress' if m.aktif else 'badge-hold' }}">{{ m.nama }}</span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Meeting notes -->
+{% if meeting_notes %}
+<div class="report-section">
+  <div class="report-section-title">Notulen Rapat ({{ meeting_notes|length }})</div>
+  {% for n in meeting_notes %}
+  <div class="card" style="margin-bottom:16px">
+    <div style="font-weight:600;margin-bottom:6px">{{ n.judul }}</div>
+    <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:10px">
+      Kegiatan: {{ n.activity_nama }} · {{ n.tanggal or '' }} · Notulis: {{ n.notulis or '—' }}
+    </div>
+    {% if n.agenda %}<div style="margin-bottom:8px"><span class="form-label">Agenda: </span><span style="font-size:.88rem;color:var(--text-secondary)">{{ n.agenda }}</span></div>{% endif %}
+    {% if n.hasil %}<div style="margin-bottom:8px"><span class="form-label">Hasil: </span><span style="font-size:.88rem;color:var(--text-secondary)">{{ n.hasil }}</span></div>{% endif %}
+    {% if n.action_items %}
+    <div class="table-wrap" style="margin-top:8px">
+      <table>
+        <thead><tr><th>#</th><th>Uraian Tugas</th><th>PIC</th><th>Deadline</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for ai in n.action_items %}
+          <tr>
+            <td>{{ loop.index }}</td><td>{{ ai.uraian }}</td><td>{{ ai.pic_nama or '—' }}</td>
+            <td>{{ ai.deadline or '—' }}</td>
+            <td><span class="badge badge-{{ ai.status }}">{{ ai.status|capitalize }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<button class="btn btn-primary print-btn" onclick="window.print()">🖨 Cetak / Export PDF</button>
+{% endblock %}

@@ -1,0 +1,570 @@
+{% extends "base.html" %}
+{% block title %}{{ project.judul }} — MonitorPro{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/form.css') }}">
+{% endblock %}
+{% block topbar_title %}{{ project.judul }}{% endblock %}
+
+{% block content %}
+<script>
+  window.CURRENT_PROJECT_ID = {{ project.id }};
+  window.CHART_DATA = {{ chart_data | tojson }};
+</script>
+
+<div class="breadcrumb">
+  <a href="{{ url_for('project.list_projects') }}">Projects</a> / {{ project.judul }}
+</div>
+<div class="page-header" style="margin-top:12px">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <h1>{{ project.judul }}</h1>
+      <span class="badge badge-{{ project.status }}">
+        {{ {'planning':'Planning','on_progress':'On Progress','done':'Done','hold':'Hold'}.get(project.status, project.status) }}
+      </span>
+      <span class="badge badge-{{ project.prioritas }}">{{ project.prioritas|capitalize }}</span>
+    </div>
+    <div style="font-size:.82rem;color:var(--text-muted);font-family:var(--font-mono)">{{ project.kode }}</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="{{ url_for('report.export_report', pid=project.id) }}" class="btn btn-secondary" target="_blank">📄 Export</a>
+    <a href="{{ url_for('project.edit_project', id=project.id) }}" class="btn btn-secondary">✏️ Edit</a>
+    <form method="POST" action="{{ url_for('project.delete_project', id=project.id) }}" style="display:inline" onsubmit="return confirm('Hapus project ini?')">
+      <button class="btn btn-danger" type="submit">🗑 Hapus</button>
+    </form>
+  </div>
+</div>
+
+<!-- Meta info -->
+<div class="card section" style="padding:16px 20px">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px">
+    {% if project.pic %}<div><div style="font-size:.75rem;color:var(--text-muted);margin-bottom:3px">PIC</div><div>{{ project.pic }}</div></div>{% endif %}
+    {% if project.klien %}<div><div style="font-size:.75rem;color:var(--text-muted);margin-bottom:3px">Klien / Lokasi</div><div>{{ project.klien }}</div></div>{% endif %}
+    {% if project.start_date %}<div><div style="font-size:.75rem;color:var(--text-muted);margin-bottom:3px">Mulai</div><div>{{ project.start_date }}</div></div>{% endif %}
+    {% if project.end_date %}<div><div style="font-size:.75rem;color:var(--text-muted);margin-bottom:3px">Target Selesai</div><div>{{ project.end_date }}</div></div>{% endif %}
+  </div>
+  {% if project.deskripsi %}<p style="margin-top:12px;color:var(--text-secondary);font-size:.88rem;border-top:1px solid var(--border);padding-top:12px">{{ project.deskripsi }}</p>{% endif %}
+</div>
+
+<!-- Progress section -->
+<div class="section">
+  <div class="charts-row">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Progress Fisik</span>
+        <span id="progress-display" style="color:var(--accent);font-weight:700;font-family:var(--font-mono)">{{ project.progress }}%</span>
+      </div>
+      <canvas id="progress-chart" height="180"></canvas>
+      <div style="margin-top:16px">
+        <label class="form-label">Geser untuk update progress</label>
+        <input type="range" id="progress-slider" min="0" max="100" value="{{ project.progress }}"
+               style="width:100%;accent-color:var(--accent)">
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Anggaran per Kategori</span>
+        <div>
+          <span style="font-size:.8rem;color:var(--text-secondary)">
+            Realisasi: <strong style="color:var(--success)">{{ budget_summary.pct }}%</strong>
+          </span>
+        </div>
+      </div>
+      {% if chart_data.labels %}
+      <div class="chart-container"><canvas id="budget-chart"></canvas></div>
+      {% else %}
+      <div class="empty-state" style="padding:40px 0">
+        <p>Belum ada data anggaran</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs" id="project-tabs">
+  <button class="tab-btn active" data-tab="activities">📅 Kegiatan ({{ activities|length }})</button>
+  <button class="tab-btn" data-tab="members">👥 Anggota ({{ members|length }})</button>
+  <button class="tab-btn" data-tab="budget">💰 Anggaran</button>
+  <button class="tab-btn" data-tab="milestones">🎯 Milestone</button>
+</div>
+
+<!-- Tab: Activities -->
+<div class="tab-panel active" id="tab-activities">
+  <div class="section-header">
+    <span class="section-title">Tabel Kegiatan</span>
+    <div style="display:flex;gap:8px">
+      <a href="{{ url_for('activity.activity_table', pid=project.id) }}" class="btn btn-secondary btn-sm">Buka Full View</a>
+      <button class="btn btn-primary btn-sm" id="add-activity-btn">＋ Tambah Baris</button>
+    </div>
+  </div>
+  <div class="card" style="padding:0">
+    <div class="table-wrap">
+      <table id="activity-table">
+        <thead>
+          <tr>
+            <th style="width:40px">No</th>
+            <th>Kegiatan</th>
+            <th>Tanggal</th>
+            <th>Mulai</th>
+            <th>Selesai</th>
+            <th>Durasi</th>
+            <th>Pelaksana</th>
+            <th>Status</th>
+            <th style="width:80px">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="activity-tbody">
+          {% for a in activities %}
+          <tr data-id="{{ a.id }}">
+            <td style="color:var(--text-muted);font-family:var(--font-mono)">{{ loop.index }}</td>
+            <td>{{ a.nama }}</td>
+            <td>{{ a.tanggal or '—' }}</td>
+            <td>{{ a.jam_mulai or '—' }}</td>
+            <td>{{ a.jam_selesai or '—' }}</td>
+            <td style="font-family:var(--font-mono)">{{ a.durasi_fmt if a.durasi_fmt is defined else '—' }}</td>
+            <td>{{ a.pelaksana or '—' }}</td>
+            <td><span class="badge badge-{{ a.status }} badge-clickable">{{ a.status|capitalize }}</span></td>
+            <td>
+              <a href="{{ url_for('meeting.meeting_note', aid=a.id) }}" class="btn-icon" title="Note Rapat">📋</a>
+              <button class="btn-icon danger delete-activity-btn" data-id="{{ a.id }}" title="Hapus">✕</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Members -->
+<div class="tab-panel" id="tab-members">
+  <div class="section-header">
+    <span class="section-title">Anggota Tim</span>
+    <button class="btn btn-primary btn-sm" id="add-member-btn">＋ Tambah Anggota</button>
+  </div>
+  <div id="add-member-form" style="display:none;margin-bottom:16px" class="card">
+    <div style="display:flex;gap:8px">
+      <input type="text" id="new-member-name" class="form-control" placeholder="Nama anggota baru" style="flex:1">
+      <button class="btn btn-primary" id="save-member-btn">Simpan</button>
+      <button class="btn btn-secondary" id="cancel-member-btn">Batal</button>
+    </div>
+  </div>
+  <div class="card" style="padding:0">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Nama</th><th>Status</th><th style="width:80px">Aksi</th></tr>
+        </thead>
+        <tbody id="member-tbody">
+          {% for m in members %}
+          <tr data-id="{{ m.id }}">
+            <td>{{ m.nama }}</td>
+            <td>
+              <span class="badge badge-clickable {{ 'badge-on_progress' if m.aktif else 'badge-hold' }} toggle-member"
+                    data-id="{{ m.id }}" data-aktif="{{ m.aktif }}">
+                {{ 'Aktif' if m.aktif else 'Non-aktif' }}
+              </span>
+            </td>
+            <td>
+              <button class="btn-icon danger delete-member-btn" data-id="{{ m.id }}" title="Hapus">✕</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Budget -->
+<div class="tab-panel" id="tab-budget">
+  <div class="section-header">
+    <span class="section-title">Rincian Anggaran</span>
+    <button class="btn btn-primary btn-sm" id="add-budget-btn">＋ Tambah Item</button>
+  </div>
+
+  <!-- Budget summary -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">
+    <div class="stat-card">
+      <div class="stat-value" style="font-size:1.1rem" id="bs-total">Rp {{ '{:,.0f}'.format(budget_summary.total).replace(',','.') }}</div>
+      <div class="stat-label">Total Anggaran</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="font-size:1.1rem;color:var(--warning)" id="bs-realisasi">Rp {{ '{:,.0f}'.format(budget_summary.realisasi).replace(',','.') }}</div>
+      <div class="stat-label">Realisasi</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="font-size:1.1rem;color:var(--success)" id="bs-sisa">Rp {{ '{:,.0f}'.format(budget_summary.sisa).replace(',','.') }}</div>
+      <div class="stat-label">Sisa Anggaran</div>
+    </div>
+    <div class="stat-card accent">
+      <div class="stat-value" id="bs-pct">{{ budget_summary.pct }}%</div>
+      <div class="stat-label">% Terpakai</div>
+    </div>
+  </div>
+
+  <div id="add-budget-form" style="display:none;margin-bottom:16px" class="card">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+      <div class="form-group" style="margin:0"><label class="form-label">Kategori</label>
+        <select class="form-control" id="bi-kategori">
+          <option>SDM</option><option>Operasional</option><option>Peralatan</option><option>Lainnya</option>
+        </select></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Nama Item</label><input class="form-control" id="bi-nama" placeholder="Item pengeluaran"></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Qty</label><input class="form-control" id="bi-qty" type="number" min="0" value="1"></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Satuan</label><input class="form-control" id="bi-satuan" placeholder="pcs/jam/hari"></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Harga Satuan</label><input class="form-control" id="bi-harga" type="number" min="0" value="0"></div>
+      <div class="form-group" style="margin:0"><label class="form-label">Realisasi</label><input class="form-control" id="bi-realisasi" type="number" min="0" value="0"></div>
+    </div>
+    <div class="form-group" style="margin-top:10px"><label class="form-label">Keterangan</label><input class="form-control" id="bi-keterangan" placeholder="Opsional"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-primary btn-sm" id="save-budget-btn">Simpan Item</button>
+      <button class="btn btn-secondary btn-sm" id="cancel-budget-btn">Batal</button>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Kategori</th><th>Item</th><th>Qty</th><th>Satuan</th><th>Harga Satuan</th><th>Total</th><th>Realisasi</th><th style="width:60px">Aksi</th></tr>
+        </thead>
+        <tbody id="budget-tbody">
+          {% for b in budgets %}
+          <tr data-id="{{ b.id }}">
+            <td>{{ b.kategori or '—' }}</td>
+            <td>{{ b.nama_item or '—' }}</td>
+            <td style="font-family:var(--font-mono)">{{ b.qty }}</td>
+            <td>{{ b.satuan or '—' }}</td>
+            <td style="font-family:var(--font-mono)">Rp {{ '{:,.0f}'.format(b.harga_satuan or 0).replace(',','.') }}</td>
+            <td style="font-family:var(--font-mono)">Rp {{ '{:,.0f}'.format(b.total_item or 0).replace(',','.') }}</td>
+            <td style="font-family:var(--font-mono)">Rp {{ '{:,.0f}'.format(b.realisasi or 0).replace(',','.') }}</td>
+            <td>
+              <button class="btn-icon danger delete-budget-btn" data-id="{{ b.id }}" title="Hapus">✕</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Milestones -->
+<div class="tab-panel" id="tab-milestones">
+  <div class="section-header">
+    <span class="section-title">Milestone</span>
+    <button class="btn btn-primary btn-sm" id="add-milestone-btn">＋ Tambah Milestone</button>
+  </div>
+  <div id="add-milestone-form" style="display:none;margin-bottom:16px" class="card">
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <div style="flex:1"><label class="form-label">Nama Milestone</label><input class="form-control" id="ms-nama" placeholder="Target capaian"></div>
+      <div><label class="form-label">Target Tanggal</label><input class="form-control" id="ms-date" type="date"></div>
+      <button class="btn btn-primary" id="save-milestone-btn">Simpan</button>
+      <button class="btn btn-secondary" id="cancel-milestone-btn">Batal</button>
+    </div>
+  </div>
+  <div class="card" style="padding:0">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Milestone</th><th>Target</th><th>Status</th><th style="width:60px">Aksi</th></tr></thead>
+        <tbody id="milestone-tbody">
+          {% for m in milestones %}
+          <tr data-id="{{ m.id }}" class="{{ 'row-overdue' if not m.selesai and m.target_date and m.target_date < today }}">
+            <td>{{ m.nama }}</td>
+            <td style="font-family:var(--font-mono)">{{ m.target_date or '—' }}</td>
+            <td>
+              <span class="badge badge-clickable toggle-milestone {{ 'badge-done' if m.selesai else 'badge-pending' }}" data-id="{{ m.id }}" data-selesai="{{ m.selesai }}">
+                {{ 'Selesai' if m.selesai else 'Belum' }}
+              </span>
+            </td>
+            <td>
+              <button class="btn-icon danger delete-milestone-btn" data-id="{{ m.id }}" title="Hapus">✕</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+<script>
+(function () {
+  var pid = window.CURRENT_PROJECT_ID;
+
+  // ── Tabs ──
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Open tab from URL hash
+  if (window.location.hash === '#tab-activities') {
+    document.querySelector('[data-tab="activities"]').click();
+  }
+
+  // ── Progress slider ──
+  var slider = document.getElementById('progress-slider');
+  var display = document.getElementById('progress-display');
+  var debounceTimer;
+  if (slider) {
+    slider.addEventListener('input', function () {
+      display.textContent = slider.value + '%';
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function () {
+        fetch('/projects/' + pid + '/progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: parseInt(slider.value) }),
+        });
+      }, 350);
+    });
+  }
+
+  window.appSocket && window.appSocket.on('progress_update', function (data) {
+    if (data.project_id !== pid) return;
+    if (slider) slider.value = data.progress;
+    if (display) display.textContent = data.progress + '%';
+  });
+
+  // ── Activity: add row ──
+  document.getElementById('add-activity-btn').addEventListener('click', function () {
+    var nama = prompt('Nama kegiatan:');
+    if (!nama || !nama.trim()) return;
+    fetch('/activities/project/' + pid + '/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nama: nama.trim() }),
+    }).then(function(r){ return r.json(); }).then(function (a) {
+      appendActivityRow(a);
+      showToast('Kegiatan ditambahkan', 'success');
+    });
+  });
+
+  function appendActivityRow(a) {
+    var tbody = document.getElementById('activity-tbody');
+    var rowNum = tbody.rows.length + 1;
+    var tr = document.createElement('tr');
+    tr.setAttribute('data-id', a.id);
+    tr.innerHTML =
+      '<td style="color:var(--text-muted);font-family:var(--font-mono)">' + rowNum + '</td>' +
+      '<td>' + (a.nama || '') + '</td>' +
+      '<td>' + (a.tanggal || '—') + '</td>' +
+      '<td>' + (a.jam_mulai || '—') + '</td>' +
+      '<td>' + (a.jam_selesai || '—') + '</td>' +
+      '<td style="font-family:var(--font-mono)">' + (a.durasi_fmt || '—') + '</td>' +
+      '<td>' + (a.pelaksana || '—') + '</td>' +
+      '<td><span class="badge badge-' + (a.status||'pending') + ' badge-clickable">' + capitalize(a.status||'pending') + '</span></td>' +
+      '<td>' +
+        '<a href="/meeting/activity/' + a.id + '" class="btn-icon" title="Note Rapat">📋</a>' +
+        '<button class="btn-icon danger delete-activity-btn" data-id="' + a.id + '" title="Hapus">✕</button>' +
+      '</td>';
+    tbody.appendChild(tr);
+  }
+
+  // Activity: delete
+  document.getElementById('activity-tbody').addEventListener('click', function (e) {
+    var btn = e.target.closest('.delete-activity-btn');
+    if (!btn) return;
+    if (!confirm('Hapus kegiatan ini?')) return;
+    var id = btn.dataset.id;
+    fetch('/activities/' + id + '/delete', { method: 'POST' }).then(function () {
+      btn.closest('tr').remove();
+      renumberRows('activity-tbody');
+      showToast('Kegiatan dihapus', 'warning');
+    });
+  });
+
+  // ── Members ──
+  var addMemberBtn = document.getElementById('add-member-btn');
+  var addMemberForm = document.getElementById('add-member-form');
+  addMemberBtn.addEventListener('click', function () { addMemberForm.style.display = 'block'; });
+  document.getElementById('cancel-member-btn').addEventListener('click', function () { addMemberForm.style.display = 'none'; });
+  document.getElementById('save-member-btn').addEventListener('click', function () {
+    var nama = document.getElementById('new-member-name').value.trim();
+    if (!nama) return;
+    fetch('/members/project/' + pid + '/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nama: nama }),
+    }).then(function(r){ return r.json(); }).then(function (m) {
+      var tbody = document.getElementById('member-tbody');
+      var tr = document.createElement('tr');
+      tr.setAttribute('data-id', m.id);
+      tr.innerHTML =
+        '<td>' + m.nama + '</td>' +
+        '<td><span class="badge badge-on_progress badge-clickable toggle-member" data-id="' + m.id + '" data-aktif="1">Aktif</span></td>' +
+        '<td><button class="btn-icon danger delete-member-btn" data-id="' + m.id + '" title="Hapus">✕</button></td>';
+      tbody.appendChild(tr);
+      document.getElementById('new-member-name').value = '';
+      addMemberForm.style.display = 'none';
+      showToast('Anggota ditambahkan', 'success');
+    });
+  });
+
+  document.getElementById('member-tbody').addEventListener('click', function (e) {
+    var del = e.target.closest('.delete-member-btn');
+    if (del) {
+      if (!confirm('Hapus anggota ini?')) return;
+      fetch('/members/' + del.dataset.id + '/delete', { method: 'POST' }).then(function () {
+        del.closest('tr').remove();
+        showToast('Anggota dihapus', 'warning');
+      });
+      return;
+    }
+    var tog = e.target.closest('.toggle-member');
+    if (tog) {
+      fetch('/members/' + tog.dataset.id + '/toggle', { method: 'POST' })
+        .then(function(r){ return r.json(); }).then(function (d) {
+          tog.dataset.aktif = d.aktif;
+          tog.className = 'badge badge-clickable toggle-member ' + (d.aktif ? 'badge-on_progress' : 'badge-hold');
+          tog.textContent = d.aktif ? 'Aktif' : 'Non-aktif';
+        });
+    }
+  });
+
+  // ── Budget ──
+  document.getElementById('add-budget-btn').addEventListener('click', function () {
+    document.getElementById('add-budget-form').style.display = 'block';
+  });
+  document.getElementById('cancel-budget-btn').addEventListener('click', function () {
+    document.getElementById('add-budget-form').style.display = 'none';
+  });
+  document.getElementById('save-budget-btn').addEventListener('click', function () {
+    var payload = {
+      kategori:    document.getElementById('bi-kategori').value,
+      nama_item:   document.getElementById('bi-nama').value,
+      qty:         parseFloat(document.getElementById('bi-qty').value) || 0,
+      satuan:      document.getElementById('bi-satuan').value,
+      harga_satuan:parseFloat(document.getElementById('bi-harga').value) || 0,
+      realisasi:   parseFloat(document.getElementById('bi-realisasi').value) || 0,
+      keterangan:  document.getElementById('bi-keterangan').value,
+    };
+    fetch('/budget/project/' + pid + '/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(function(r){ return r.json(); }).then(function (d) {
+      var b = d.item;
+      var tbody = document.getElementById('budget-tbody');
+      var tr = document.createElement('tr');
+      tr.setAttribute('data-id', b.id);
+      tr.innerHTML =
+        '<td>' + (b.kategori||'—') + '</td><td>' + (b.nama_item||'—') + '</td>' +
+        '<td style="font-family:var(--font-mono)">' + b.qty + '</td>' +
+        '<td>' + (b.satuan||'—') + '</td>' +
+        '<td style="font-family:var(--font-mono)">Rp ' + fmtRp(b.harga_satuan) + '</td>' +
+        '<td style="font-family:var(--font-mono)">Rp ' + fmtRp(b.total_item) + '</td>' +
+        '<td style="font-family:var(--font-mono)">Rp ' + fmtRp(b.realisasi) + '</td>' +
+        '<td><button class="btn-icon danger delete-budget-btn" data-id="' + b.id + '" title="Hapus">✕</button></td>';
+      tbody.appendChild(tr);
+      updateBudgetSummary(d.summary);
+      document.getElementById('add-budget-form').style.display = 'none';
+      showToast('Item anggaran ditambahkan', 'success');
+    });
+  });
+
+  document.getElementById('budget-tbody').addEventListener('click', function (e) {
+    var btn = e.target.closest('.delete-budget-btn');
+    if (!btn) return;
+    if (!confirm('Hapus item anggaran ini?')) return;
+    fetch('/budget/' + btn.dataset.id + '/delete', { method: 'POST' })
+      .then(function(r){ return r.json(); }).then(function (d) {
+        btn.closest('tr').remove();
+        updateBudgetSummary(d.summary);
+        showToast('Item dihapus', 'warning');
+      });
+  });
+
+  window.appSocket && window.appSocket.on('budget_changed', function (data) {
+    if (data.project_id !== pid) return;
+    updateBudgetSummary(data.summary);
+  });
+
+  function updateBudgetSummary(s) {
+    var el = function(id){ return document.getElementById(id); };
+    if (el('bs-total')) el('bs-total').textContent = 'Rp ' + fmtRp(s.total);
+    if (el('bs-realisasi')) el('bs-realisasi').textContent = 'Rp ' + fmtRp(s.realisasi);
+    if (el('bs-sisa')) el('bs-sisa').textContent = 'Rp ' + fmtRp(s.sisa);
+    if (el('bs-pct')) el('bs-pct').textContent = s.pct + '%';
+  }
+
+  // ── Milestones ──
+  document.getElementById('add-milestone-btn').addEventListener('click', function () {
+    document.getElementById('add-milestone-form').style.display = 'block';
+  });
+  document.getElementById('cancel-milestone-btn').addEventListener('click', function () {
+    document.getElementById('add-milestone-form').style.display = 'none';
+  });
+  document.getElementById('save-milestone-btn').addEventListener('click', function () {
+    var nama = document.getElementById('ms-nama').value.trim();
+    if (!nama) return;
+    fetch('/budget/milestone/' + pid + '/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nama: nama, target_date: document.getElementById('ms-date').value }),
+    }).then(function(r){ return r.json(); }).then(function (m) {
+      var tbody = document.getElementById('milestone-tbody');
+      var tr = document.createElement('tr');
+      tr.setAttribute('data-id', m.id);
+      tr.innerHTML =
+        '<td>' + m.nama + '</td>' +
+        '<td style="font-family:var(--font-mono)">' + (m.target_date||'—') + '</td>' +
+        '<td><span class="badge badge-pending badge-clickable toggle-milestone" data-id="' + m.id + '" data-selesai="0">Belum</span></td>' +
+        '<td><button class="btn-icon danger delete-milestone-btn" data-id="' + m.id + '" title="Hapus">✕</button></td>';
+      tbody.appendChild(tr);
+      document.getElementById('ms-nama').value = '';
+      document.getElementById('ms-date').value = '';
+      document.getElementById('add-milestone-form').style.display = 'none';
+      showToast('Milestone ditambahkan', 'success');
+    });
+  });
+
+  document.getElementById('milestone-tbody').addEventListener('click', function (e) {
+    var del = e.target.closest('.delete-milestone-btn');
+    if (del) {
+      if (!confirm('Hapus milestone ini?')) return;
+      fetch('/budget/milestone/' + del.dataset.id + '/delete', { method: 'POST' }).then(function () {
+        del.closest('tr').remove();
+        showToast('Milestone dihapus', 'warning');
+      });
+      return;
+    }
+    var tog = e.target.closest('.toggle-milestone');
+    if (tog) {
+      fetch('/budget/milestone/' + tog.dataset.id + '/toggle', { method: 'POST' })
+        .then(function(r){ return r.json(); }).then(function (d) {
+          tog.dataset.selesai = d.selesai;
+          tog.className = 'badge badge-clickable toggle-milestone ' + (d.selesai ? 'badge-done' : 'badge-pending');
+          tog.textContent = d.selesai ? 'Selesai' : 'Belum';
+        });
+    }
+  });
+
+  // ── Helpers ──
+  function renumberRows(tbodyId) {
+    var rows = document.getElementById(tbodyId).rows;
+    for (var i = 0; i < rows.length; i++) {
+      var first = rows[i].cells[0];
+      if (first) first.textContent = i + 1;
+    }
+  }
+
+  function fmtRp(n) {
+    return Math.round(n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+
+  function capitalize(s) {
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+  }
+})();
+</script>
+{% endblock %}

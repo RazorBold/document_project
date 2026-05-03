@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Projects — MonitorPro{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+{% block topbar_title %}Projects{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Semua Project</h1>
+  <a href="{{ url_for('project.new_project') }}" class="btn btn-primary">＋ Project Baru</a>
+</div>
+
+{% if projects %}
+<div class="project-grid" id="project-cards">
+  {% for p in projects %}
+  <div class="project-card">
+    <div class="project-card-header">
+      <div>
+        <div class="project-card-code">{{ p.kode }}</div>
+        <div class="project-card-title">
+          <a href="{{ url_for('project.project_detail', id=p.id) }}">{{ p.judul }}</a>
+        </div>
+      </div>
+      <div class="badge badge-{{ p.status }}">
+        {{ {'planning':'Planning','on_progress':'On Progress','done':'Done','hold':'Hold'}.get(p.status, p.status) }}
+      </div>
+    </div>
+    {% if p.deskripsi %}
+    <p class="project-card-desc">{{ p.deskripsi[:120] }}{% if p.deskripsi|length > 120 %}…{% endif %}</p>
+    {% endif %}
+    <div class="project-card-meta">
+      {% if p.pic %}<span>👤 {{ p.pic }}</span>{% endif %}
+      {% if p.klien %}<span>🏢 {{ p.klien }}</span>{% endif %}
+      <span class="badge badge-{{ p.prioritas }}">{{ p.prioritas|capitalize }}</span>
+    </div>
+    <div class="project-card-progress">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:.8rem">
+        <span style="color:var(--text-secondary)">Progress</span>
+        <span style="color:var(--accent);font-weight:600">{{ p.progress }}%</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar" style="width:{{ p.progress }}%"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <a href="{{ url_for('project.project_detail', id=p.id) }}" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">Detail</a>
+      <a href="{{ url_for('project.edit_project', id=p.id) }}" class="btn btn-secondary btn-sm">Edit</a>
+      <form method="POST" action="{{ url_for('project.delete_project', id=p.id) }}" onsubmit="return confirm('Hapus project ini?')">
+        <button class="btn btn-danger btn-sm" type="submit">Hapus</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state card">
+  <div class="empty-state-icon">◻</div>
+  <p>Belum ada project. <a href="{{ url_for('project.new_project') }}">Buat project pertama</a>.</p>
+</div>
+{% endif %}
+{% endblock %}
