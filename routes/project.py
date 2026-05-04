@@ -80,6 +80,21 @@ def project_detail(id):
                COALESCE(SUM(realisasi), 0)  AS real
         FROM budgets WHERE project_id = ? GROUP BY kategori
     """, (id,)).fetchall()
+
+    # Activity status breakdown
+    act_rows = conn.execute("""
+        SELECT status, COUNT(*) as cnt FROM activities WHERE project_id = ? GROUP BY status
+    """, (id,)).fetchall()
+    act_stats = {'selesai': 0, 'ongoing': 0, 'pending': 0}
+    for r in act_rows:
+        st = r['status']
+        if st in act_stats:
+            act_stats[st] = r['cnt']
+
+    # Milestone breakdown
+    ms_total = len(milestones)
+    ms_selesai = sum(1 for m in milestones if m['selesai'])
+
     conn.close()
 
     chart_data = {
@@ -88,6 +103,13 @@ def project_detail(id):
         'labels': [r['kategori'] or 'Lainnya' for r in kategori_rows],
         'anggaran': [r['total'] for r in kategori_rows],
         'realisasi': [r['real'] for r in kategori_rows],
+        'act_selesai': act_stats['selesai'],
+        'act_ongoing': act_stats['ongoing'],
+        'act_pending': act_stats['pending'],
+        'act_total': len(activities),
+        'ms_selesai': ms_selesai,
+        'ms_belum': ms_total - ms_selesai,
+        'ms_total': ms_total,
     }
 
     return render_template(

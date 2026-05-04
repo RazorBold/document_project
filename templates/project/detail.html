@@ -108,6 +108,90 @@
   </div>
 </div>
 
+<!-- Stats row: Activity status + Milestone -->
+<div class="section">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+    <!-- Activity Status -->
+    <div class="card" style="padding:16px 20px">
+      <div class="card-header" style="margin-bottom:0">
+        <span class="card-title">Status Kegiatan</span>
+        <span style="font-size:.75rem;color:var(--text-muted)">{{ activities|length }} total</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:24px;padding:12px 0 4px">
+        <div style="position:relative;height:130px;width:130px;flex-shrink:0">
+          <canvas id="activity-status-chart"></canvas>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:10px;height:10px;border-radius:50%;background:#3fb950;display:inline-block"></span>
+              <span style="font-size:.84rem;color:var(--text-secondary)">Selesai</span>
+            </div>
+            <span style="font-family:var(--font-mono);font-weight:700;color:#3fb950;font-size:.95rem">{{ chart_data.act_selesai }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:10px;height:10px;border-radius:50%;background:#22d3ee;display:inline-block"></span>
+              <span style="font-size:.84rem;color:var(--text-secondary)">Ongoing</span>
+            </div>
+            <span style="font-family:var(--font-mono);font-weight:700;color:#22d3ee;font-size:.95rem">{{ chart_data.act_ongoing }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:10px;height:10px;border-radius:50%;background:#d29922;display:inline-block"></span>
+              <span style="font-size:.84rem;color:var(--text-secondary)">Pending</span>
+            </div>
+            <span style="font-family:var(--font-mono);font-weight:700;color:#d29922;font-size:.95rem">{{ chart_data.act_pending }}</span>
+          </div>
+          {% if chart_data.act_total > 0 %}
+          <div style="margin-top:2px">
+            <div class="progress-wrap" style="height:4px"><div class="progress-bar" style="width:{{ (chart_data.act_selesai / chart_data.act_total * 100)|round|int }}%"></div></div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px;text-align:right">{{ (chart_data.act_selesai / chart_data.act_total * 100)|round|int }}% selesai</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Milestone Status -->
+    <div class="card" style="padding:16px 20px">
+      <div class="card-header" style="margin-bottom:0">
+        <span class="card-title">Milestone</span>
+        <span style="font-size:.75rem;color:var(--text-muted)">{{ milestones|length }} total</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:24px;padding:12px 0 4px">
+        <div style="position:relative;height:130px;width:130px;flex-shrink:0">
+          <canvas id="milestone-chart"></canvas>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:10px;height:10px;border-radius:50%;background:#3fb950;display:inline-block"></span>
+              <span style="font-size:.84rem;color:var(--text-secondary)">Selesai</span>
+            </div>
+            <span style="font-family:var(--font-mono);font-weight:700;color:#3fb950;font-size:.95rem">{{ chart_data.ms_selesai }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:10px;height:10px;border-radius:50%;background:#21262d;border:1.5px solid #484f58;display:inline-block"></span>
+              <span style="font-size:.84rem;color:var(--text-secondary)">Belum</span>
+            </div>
+            <span style="font-family:var(--font-mono);font-weight:700;color:var(--text-muted);font-size:.95rem">{{ chart_data.ms_belum }}</span>
+          </div>
+          {% if chart_data.ms_total > 0 %}
+          <div style="margin-top:2px">
+            <div class="progress-wrap" style="height:4px"><div class="progress-bar" style="width:{{ (chart_data.ms_selesai / chart_data.ms_total * 100)|round|int }}%"></div></div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px;text-align:right">{{ chart_data.ms_selesai }} dari {{ chart_data.ms_total }} milestone selesai</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- Tabs -->
 <div class="tabs" id="project-tabs">
   <button class="tab-btn active" data-tab="activities">📅 Kegiatan ({{ activities|length }})</button>

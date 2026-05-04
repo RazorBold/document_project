@@ -71,4 +71,6 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    socketio.run(app, debug=True, host='0.0.0.0', port=5028)
+    # use_reloader=False: Flask reloader + eventlet keduanya mencoba bind ke port yang sama
+    # menyebabkan WinError 10048. Nonaktifkan reloader; restart manual jika ada perubahan.
+    socketio.run(app, debug=True, host='0.0.0.0', port=5028, use_reloader=False)
