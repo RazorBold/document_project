@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.env
+.vercel
+monitoring.db-shm
+monitoring.db-wal

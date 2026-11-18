@@ -33,10 +33,9 @@ def meeting_note(aid):
                 from werkzeug.utils import secure_filename
                 import os
                 from flask import current_app
+                from storage import save_upload
                 fname = secure_filename(f.filename)
-                upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], fname)
-                f.save(upload_path)
-                lampiran = fname
+                lampiran = save_upload(f, fname)
 
         try:
             cur = conn.execute("""
