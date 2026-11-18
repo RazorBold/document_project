@@ -1,12 +1,14 @@
 (function () {
   'use strict';
 
-  const socket = io();
+  // Realtime (Socket.IO) is disabled on serverless hosts like Vercel.
+  var socket = (window.REALTIME_ENABLED && typeof io !== 'undefined') ? io() : null;
   window.appSocket = socket;
 
   const liveBadge = document.getElementById('live-badge');
   const connStatus = document.getElementById('connection-status');
 
+  if (socket) {
   socket.on('connect', function () {
     if (liveBadge) liveBadge.classList.remove('hidden');
     if (connStatus) {
@@ -32,6 +34,10 @@
     if (type === 'info' && data.message && data.message.startsWith('Terhubung ke project')) return;
     showToast(data.message, type);
   });
+  } else if (connStatus) {
+    connStatus.textContent = '● Online';
+    connStatus.className = 'conn-status online';
+  }
 
   // Mobile sidebar toggle
   var menuToggle = document.getElementById('menu-toggle');

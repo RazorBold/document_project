@@ -1,7 +1,11 @@
-import eventlet
-eventlet.monkey_patch()
-
 import os
+
+# Vercel runs the app as a serverless WSGI function: no eventlet / long-lived WebSockets there.
+ON_VERCEL = bool(os.getenv('VERCEL'))
+if not ON_VERCEL and os.getenv('SOCKETIO_ASYNC_MODE', 'eventlet') == 'eventlet':
+    import eventlet
+    eventlet.monkey_patch()
+
 from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO
 from flask_cors import CORS
@@ -15,7 +19,14 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    try:
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    except OSError:
+        pass  # read-only filesystem (e.g. Vercel)
+
+    @app.context_processor
+    def inject_realtime_flag():
+        return {'realtime_enabled': app.config['REALTIME_ENABLED']}
 
     CORS(app)
     socketio.init_app(
