@@ -1,7 +1,7 @@
--- Postgres (Supabase) schema for the Monitoring & Reporting app.
+-- Postgres (Neon / Supabase) schema for the Monitoring & Reporting app.
 -- Date/time columns are TEXT on purpose: the app (written for SQLite) treats them as
 -- 'YYYY-MM-DD' / 'HH:MM' / 'YYYY-MM-DD HH:MM:SS' strings in templates and JSON.
--- Run once in Supabase → SQL Editor.
+-- Run once in the Neon (or Supabase) SQL Editor.
 
 CREATE OR REPLACE FUNCTION now_text() RETURNS text
 LANGUAGE sql STABLE AS $$
@@ -145,8 +145,8 @@ CREATE TABLE IF NOT EXISTS documents (
 );
 CREATE INDEX IF NOT EXISTS idx_documents_project ON documents(project_id);
 
--- The Flask app connects as the table owner (postgres), so it is not affected by RLS.
--- Enabling RLS with no policies blocks access through Supabase's public REST API (anon key).
+-- The Flask app connects as the table owner, so it is not affected by RLS.
+-- Enabling RLS with no policies blocks access through public data APIs (Supabase/Neon Data API).
 ALTER TABLE projects          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activities        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members           ENABLE ROW LEVEL SECURITY;
@@ -156,8 +156,3 @@ ALTER TABLE action_items      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE budgets           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE milestones        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents         ENABLE ROW LEVEL SECURITY;
-
--- Storage bucket for meeting-note attachments (lampiran)
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('uploads', 'uploads', true)
-ON CONFLICT (id) DO NOTHING;

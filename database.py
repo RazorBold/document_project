@@ -1,6 +1,6 @@
 """Database access layer.
 
-- If DATABASE_URL is set (e.g. Supabase Postgres), connects with psycopg.
+- If DATABASE_URL is set (e.g. Postgres (Neon)), connects with psycopg.
 - Otherwise falls back to the local SQLite file (config DATABASE).
 
 Route code keeps using the sqlite3-style API:
@@ -70,7 +70,7 @@ class _PgConnection:
     def __init__(self, url):
         import psycopg
         from psycopg.rows import dict_row
-        # prepare_threshold=None -> works with Supabase's transaction pooler (pgbouncer)
+        # prepare_threshold=None -> works with pgbouncer-style poolers (Neon pooled URL, Supabase pooler)
         self._conn = psycopg.connect(url, row_factory=dict_row, prepare_threshold=None,
                                      connect_timeout=10)
 
